@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
+#include "btop_claude.hpp"
 #include "btop_cli.hpp"
 
 #include <algorithm>
@@ -14,6 +15,8 @@
 #include <string_view>
 
 #include <unistd.h>
+
+#include <iostream>
 
 #include <fmt/base.h>
 #include <fmt/format.h>
@@ -72,6 +75,21 @@ namespace Cli {
 			if (arg == "--version") {
 				version();
 				build_info();
+				return std::unexpected { 0 };
+			}
+
+			if (arg == "--claude-statusline") {
+				::Claude::statusline_main(std::cin);
+				return std::unexpected { 0 };
+			}
+			if (arg == "--claude-report") {
+				::Claude::report_main();
+				return std::unexpected { 0 };
+			}
+			if (arg == "--self-update" || arg == "--self-update-force") {
+				if (const auto code = ::Claude::self_update_main(arg == "--self-update-force"); code != 0) {
+					std::exit(code);
+				}
 				return std::unexpected { 0 };
 			}
 
@@ -260,6 +278,9 @@ namespace Cli {
 			"  {2}    --no-tty{1}            Force disable tty mode\n"
 			"  {2}-u, --update{1} <ms>       Set an initial update rate in milliseconds\n"
 			"  {2}    --default-config{1}    Print default config to standard output\n"
+			"  {2}    --claude-report{1}     Print Claude Code token totals and exit\n"
+			"  {2}    --claude-statusline{1} Use as Claude Code status line to show plan limits\n"
+			"  {2}    --self-update{1}       Update this binary from the latest GitHub release\n"
 			"  {2}-h, --help{1}              Show this help message and exit\n"
 			"  {2}-V, --version{1}           Show a version message and exit (more with --version)\n",
 			BOLD_UNDERLINE, RESET, BOLD

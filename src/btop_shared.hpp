@@ -359,6 +359,15 @@ namespace Net {
 	string draw(const net_info& net, bool force_redraw = false, bool data_same = false);
 }
 
+namespace Claude {
+	extern string box;
+	extern int x, y, width, height, min_height;
+	extern bool shown, redraw;
+
+	//* Draw the Claude usage box, its data comes from a background thread
+	string draw(bool force_redraw);
+}
+
 namespace Proc {
 	extern atomic<int> numpids;
 

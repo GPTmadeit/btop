@@ -60,6 +60,7 @@ tab-size = 4
 #include <fmt/core.h>
 #include <fmt/ostream.h>
 
+#include "btop_claude.hpp"
 #include "btop_cli.hpp"
 #include "btop_config.hpp"
 #include "btop_draw.hpp"
@@ -94,7 +95,7 @@ namespace Global {
 		{"#801414", "██████╔╝   ██║   ╚██████╔╝██║        ╚═╝    ╚═╝"},
 		{"#000000", "╚═════╝    ╚═╝    ╚═════╝ ╚═╝"},
 	};
-	const string Version = "1.4.8";
+	const string Version = "1.4.8-claude.1";
 
 	int coreCount;
 	string overlay;
@@ -641,6 +642,11 @@ namespace Runner {
 					catch (const std::exception& e) {
 						throw std::runtime_error("Proc:: -> " + string{e.what()});
 					}
+				}
+
+				//? CLAUDE
+				if (Claude::shown and (v_contains(conf.boxes, "proc") or v_contains(conf.boxes, "claude"))) {
+					if (not pause_output) output += Claude::draw(conf.force_redraw);
 				}
 
 			}

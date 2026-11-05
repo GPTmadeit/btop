@@ -29,6 +29,7 @@ tab-size = 4
 
 #include "btop_input.hpp"
 #include "btop_tools.hpp"
+#include "btop_claude.hpp"
 #include "btop_config.hpp"
 #include "btop_shared.hpp"
 #include "btop_menu.hpp"
@@ -284,6 +285,20 @@ namespace Input {
 					return;
 				} else if (is_in(key, "ctrl_r")) {
 					kill(getpid(), SIGUSR2);
+					return;
+				} else if (key == "U") {
+					atomic_wait(Runner::active);
+					Config::flip("show_claude");
+					Draw::calcSizes();
+					Draw::update_clock(true);
+					Runner::run("all", false, true);
+					return;
+				} else if (key == "R" and Claude::shown) {
+					atomic_wait(Runner::active);
+					const auto& current = Config::getS("claude_range");
+					const auto next = (v_index(Claude::ranges, current) + 1) % Claude::ranges.size();
+					Config::set("claude_range", Claude::ranges.at(next));
+					Runner::run("claude", true, true);
 					return;
 				} else if (key == "mouse_release") {
 					dragging_scroll = false;

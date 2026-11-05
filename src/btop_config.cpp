@@ -32,6 +32,7 @@ tab-size = 4
 #include <fmt/core.h>
 #include <sys/statvfs.h>
 
+#include "btop_claude.hpp"
 #include "btop_config.hpp"
 #include "btop_log.hpp"
 #include "btop_shared.hpp"
@@ -142,6 +143,12 @@ namespace Config {
 		{"proc_info_smaps",		"#* Use /proc/[pid]/smaps for memory information in the process info box (very slow but more accurate)"},
 
 		{"proc_left",			"#* Show proc box on left side of screen instead of right."},
+
+		{"show_claude",			"#* Show the Claude usage box in the proc column, needs enough terminal height."},
+
+		{"claude_position",		"#* Where to put the Claude usage box, \"bottom\" or \"top\" of the proc column."},
+
+		{"claude_range",		"#* Time range of the Claude usage graph, \"5h\" \"24h\" \"7d\" or \"30d\"."},
 
 		{"proc_filter_kernel",  "#* (Linux) Filter processes tied to the Linux kernel(similar behavior to htop)."},
 
@@ -282,6 +289,8 @@ namespace Config {
 		{"graph_symbol_net", "default"},
 		{"graph_symbol_proc", "default"},
 		{"proc_sorting", "cpu lazy"},
+		{"claude_position", "bottom"},
+		{"claude_range", "24h"},
 		{"cpu_graph_upper", "Auto"},
 		{"cpu_graph_lower", "Auto"},
 		{"cpu_sensor", "Auto"},
@@ -327,6 +336,7 @@ namespace Config {
 		{"proc_cpu_graphs", true},
 		{"proc_info_smaps", false},
 		{"proc_left", false},
+		{"show_claude", true},
 		{"proc_filter_kernel", false},
 		{"cpu_invert_lower", true},
 		{"cpu_single_graph", false},
@@ -606,6 +616,12 @@ namespace Config {
 
 		else if (name.starts_with("graph_symbol_") and (value != "default" and not v_contains(valid_graph_symbols, value)))
 			validError = fmt::format("Invalid graph symbol identifier for {}: {}", name, value);
+
+		else if (name == "claude_position" and not v_contains(Claude::positions, value))
+			validError = fmt::format("Invalid claude_position: {}", value);
+
+		else if (name == "claude_range" and not v_contains(Claude::ranges, value))
+			validError = fmt::format("Invalid claude_range: {}", value);
 
 		else if (name == "shown_boxes" and not Global::init_conf) {
 			if (value.empty())

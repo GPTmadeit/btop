@@ -28,6 +28,7 @@ tab-size = 4
 
 #include <fmt/format.h>
 
+#include "btop_claude.hpp"
 #include "btop_config.hpp"
 #include "btop_draw.hpp"
 #include "btop_input.hpp"
@@ -1600,6 +1601,124 @@ namespace Net {
 
 }
 
+namespace Claude {
+	int height_p = 30;
+	int min_height = 6, max_height = 12;
+	int x = 1, y, width = 20, height;
+	int b_x, b_width, graph_width, graph_height;
+	bool shown = false, redraw = true;
+	string box;
+	Draw::Graph graph;
+	Draw::Meter meter;
+	int meter_width = 0;
+	int64_t last_slot = -1;
+	uint64_t last_revision = 0;
+	string peak_label;
+
+	string draw(bool force_redraw) {
+		if (Runner::stopping) return "";
+		if (force_redraw) redraw = true;
+		Claude::start();
+
+		auto tty_mode = Config::getB("tty_mode");
+		auto& graph_symbol = (tty_mode ? "tty" : Config::getS("graph_symbol_proc"));
+		auto& range_name = Config::getS("claude_range");
+		const int64_t range = range_seconds(range_name);
+		const int64_t now = static_cast<int64_t>(time_s());
+		const int columns = graph_width * ((tty_mode or graph_symbol == "tty") ? 1 : 2);
+		const int64_t slot_seconds = max<int64_t>(1, range / max(columns, 1));
+		const auto snap = snapshot(slot_seconds, columns, range, now);
+		const int64_t slot = now / slot_seconds;
+
+		string out;
+		out.reserve(width * height);
+		const string title_left = Theme::c("proc_box") + Fx::ub + Symbols::title_left;
+		const string title_right = Theme::c("proc_box") + Fx::ub + Symbols::title_right;
+		const string title_left_down = Theme::c("proc_box") + Fx::ub + Symbols::title_left_down;
+		const string title_right_down = Theme::c("proc_box") + Fx::ub + Symbols::title_right_down;
+
+		//* Redraw elements not needed to be updated every cycle
+		if (redraw) {
+			out = box;
+
+			const int range_x = x + width - (int)range_name.size() - 6;
+			out += Mv::to(y, range_x) + title_left + Fx::b + Theme::c("hi_fg") + 'R' + Theme::c("title") + ' ' + range_name + title_right;
+			Input::mouse_mappings["R"] = {y, range_x + 1, 1, (int)range_name.size() + 2};
+
+			out += Mv::to(y, x + 11) + title_left + Fx::b + Theme::c("hi_fg") + 'U' + Theme::c("title") + "sage" + title_right;
+			Input::mouse_mappings["U"] = {y, x + 12, 1, 5};
+
+			const string range_label = '-' + range_name;
+			out += Mv::to(y + height - 1, x + 2) + title_left_down + Theme::c("graph_text") + range_label + title_right_down
+				+ Mv::to(y + height - 1, x + graph_width - 4) + title_left_down + Theme::c("graph_text") + "now" + title_right_down;
+		}
+
+		//? Graph, rebuilt only when a time slot passes or new messages came in
+		if (redraw or slot != last_slot or snap.revision != last_revision) {
+			last_slot = slot;
+			last_revision = snap.revision;
+			const long long peak = snap.buckets.empty() ? 0 : *rng::max_element(snap.buckets);
+			//? Smallest value the graph can display, so a single message is never invisible
+			const long long floor_value = 100 / (graph_height * 4) + 1;
+			deque<long long> data;
+			for (const auto& value : snap.buckets)
+				data.push_back(value > 0 and peak > 0 ? max(floor_value, value * 100 / peak) : 0);
+			graph = Draw::Graph{graph_width, graph_height, "process", data, graph_symbol};
+			peak_label = peak > 0 ? humanize(peak) + '/' + duration(slot_seconds) : "";
+		}
+		out += Mv::to(y + 1, x + 1) + graph();
+
+		if (not snap.loaded or not snap.found_transcripts) {
+			const string message = snap.loaded ? "No Claude Code transcripts found" : "Reading transcripts...";
+			out += Mv::to(y + height / 2, x + 2) + Theme::c("inactive_fg") + uresize(message, max(graph_width - 2, 0));
+		}
+		else if (not peak_label.empty()) {
+			out += Mv::to(y + 1, x + 1) + Fx::ub + Theme::c("graph_text") + peak_label;
+		}
+
+		//? Stats next to the graph, plan limits come first because they're what runs out
+		int row = 0;
+		const int rows = height - 2;
+		const auto label = [&](const string& name) {
+			return Mv::to(y + 1 + row, b_x) + Fx::ub + Theme::c("graph_text") + ljust(name, 4);
+		};
+		const bool wide = b_width >= 26;
+		const int wanted_meter = max(1, b_width - 8 - (wide ? 6 : 0));
+		if (redraw or meter_width != wanted_meter) {
+			meter = Draw::Meter{wanted_meter, "process"};
+			meter_width = wanted_meter;
+		}
+		const auto limit_row = [&](const string& name, const std::optional<Limit>& limit) {
+			if (not limit or row >= rows) return;
+			const bool expired = limit->resets_at <= now;
+			const int used = expired ? 0 : (int)round(limit->used);
+			out += Mv::to(y + 1 + row, b_x) + Fx::ub + Theme::c("graph_text") + ljust(name, 3) + meter(used) + Theme::c("main_fg")
+				+ rjust(to_string(used) + '%', 5);
+			if (wide) out += Theme::c("graph_text") + rjust(expired ? "" : duration(limit->resets_at - now), 6);
+			++row;
+		};
+		limit_row("5h", snap.limits.five_hour);
+		limit_row("7d", snap.limits.seven_day);
+
+		const auto token_row = [&](const string& name, const string& value) {
+			if (row >= rows) return;
+			out += label(name) + Theme::c("main_fg") + rjust(value, b_width - 4);
+			++row;
+		};
+		token_row("5h", humanize(snap.last_5h.fresh()));
+		token_row("24h", humanize(snap.last_24h.fresh()));
+		token_row("7d", humanize(snap.last_7d.fresh()));
+		token_row("30d", humanize(snap.last_30d.fresh()));
+		token_row("10m", humanize(snap.last_10m.fresh()));
+
+		//? Clear rows that a longer list left behind, e.g. after limits expire from the file
+		for (; row < rows; ++row) out += Mv::to(y + 1 + row, b_x) + string(b_width, ' ');
+
+		redraw = false;
+		return out + Fx::reset;
+	}
+}
+
 namespace Proc {
 	int width_p = 55, height_p = 68;
 	int min_width = 44, min_height = 16;
@@ -2302,6 +2421,10 @@ namespace Draw {
 		Mem::shown = boxes.contains("mem");
 		Net::shown = boxes.contains("net");
 		Proc::shown = boxes.contains("proc");
+		if (not Proc::shown) {
+			Claude::shown = false;
+			Claude::set_active(false);
+		}
 
 		//* Calculate and draw cpu box outlines
 		if (Cpu::shown) {
@@ -2544,6 +2667,41 @@ namespace Draw {
 		#else
 			y = (cpu_bottom and Cpu::shown) ? 1 : Cpu::height + 1;
 		#endif
+
+			//? The Claude usage box takes its height from the proc box and only exists with room to spare
+			Claude::box.clear();
+			Claude::redraw = true;
+			Claude::shown = Config::getB("show_claude");
+			if (Claude::shown) {
+				const int wanted = clamp((int)round((double)height * Claude::height_p / 100), Claude::min_height, Claude::max_height);
+				const int claude_height = min(wanted, height - min_height);
+				if (claude_height < Claude::min_height)
+					Claude::shown = false;
+				else {
+					Claude::x = x;
+					Claude::width = width;
+					Claude::height = claude_height;
+					if (Config::getS("claude_position") == "top") {
+						Claude::y = y;
+						y += claude_height;
+					}
+					else
+						Claude::y = y + height - claude_height;
+					height -= claude_height;
+
+					Claude::b_width = width >= 56 ? 26 : 20;
+					Claude::b_x = x + width - Claude::b_width - 1;
+					Claude::graph_width = width - Claude::b_width - 3;
+					Claude::graph_height = claude_height - 2;
+					const int divider = Claude::b_x - 1;
+					Claude::box = createBox(x, Claude::y, width, claude_height, Theme::c("proc_box"), true, "claude");
+					Claude::box += Mv::to(Claude::y, divider) + Symbols::div_up + Mv::to(Claude::y + claude_height - 1, divider) + Symbols::div_down + Theme::c("div_line");
+					for (auto i : iota(1, claude_height - 1))
+						Claude::box += Mv::to(Claude::y + i, divider) + Symbols::v_line;
+				}
+			}
+			Claude::set_active(Claude::shown);
+
 			select_max = height - 3;
 			box = createBox(x, y, width, height, Theme::c("proc_box"), true, "proc", "", 4);
 		}

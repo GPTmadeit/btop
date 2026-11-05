@@ -18,6 +18,7 @@ tab-size = 4
 
 #include "btop_menu.hpp"
 
+#include "btop_claude.hpp"
 #include "btop_config.hpp"
 #include "btop_draw.hpp"
 #include "btop_log.hpp"
@@ -182,6 +183,8 @@ namespace Menu {
 		{"3", "Toggle NET box."},
 		{"4", "Toggle PROC box."},
 		{"5", "Toggle GPU box."},
+		{"shift + u", "Toggle Claude usage box."},
+		{"shift + r", "Cycle Claude usage time range."},
 		{"d", "Toggle disks view in MEM box."},
 		{"F2, o", "Shows options."},
 		{"F1, ?, h", "Shows this window."},
@@ -810,6 +813,27 @@ namespace Menu {
 				"",
 				"Show proc box on left side of screen",
 				"instead of right."},
+			{"show_claude",
+				"Show the Claude usage box.",
+				"",
+				"Graphs Claude Code tokens per time slot",
+				"from the session transcripts on this PC.",
+				"",
+				"Hidden when the terminal is too short.",
+				"Can also be toggled with shift + u."},
+			{"claude_position",
+				"Claude usage box location.",
+				"",
+				"Above or below the processes.",
+				"",
+				"\"bottom\" or \"top\"."},
+			{"claude_range",
+				"Claude usage graph time range.",
+				"",
+				"How far back the graph goes.",
+				"Can also be cycled with shift + r.",
+				"",
+				"\"5h\" \"24h\" \"7d\" or \"30d\"."},
 			{"graph_symbol_proc",
 				"Graph symbol to use for graphs in proc box.",
 				"",
@@ -1320,6 +1344,8 @@ static int optionsMenu(const string& key) {
 			{"freq_mode", std::cref(Config::freq_modes)},
 		#endif
 			{"proc_sorting", std::cref(Proc::sort_vector)},
+			{"claude_position", std::cref(Claude::positions)},
+			{"claude_range", std::cref(Claude::ranges)},
 			{"graph_symbol", std::cref(Config::valid_graph_symbols)},
 			{"graph_symbol_cpu", std::cref(Config::valid_graph_symbols_def)},
 			{"graph_symbol_mem", std::cref(Config::valid_graph_symbols_def)},
@@ -1573,7 +1599,7 @@ static int optionsMenu(const string& key) {
 					else if (option == "base_10_bitrate") {
 						recollect = true;
 					}
-					else if (is_in(option, "proc_sorting", "cpu_sensor", "show_gpu_info") or option.starts_with("graph_symbol") or option.starts_with("cpu_graph_"))
+					else if (is_in(option, "proc_sorting", "cpu_sensor", "show_gpu_info", "claude_position", "claude_range") or option.starts_with("graph_symbol") or option.starts_with("cpu_graph_"))
 						screen_redraw = true;
 					else if (option == "disable_presets" and optList.at(i) != "Off") {
 						atomic_wait(Runner::active);
