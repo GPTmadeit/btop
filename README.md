@@ -1,7 +1,7 @@
 # ![btop++](Img/logo.png)
 
 > [!NOTE]
-> **This fork is btop-claude: btop++ with a Claude usage chart next to the processes.** Everything else below is upstream's README.
+> **This fork is cbtop: btop++ with a Claude usage chart next to the processes.** Everything else below is upstream's README.
 >
 > ```
 > ╭─┐claude┌─┐Usage┌───────────────────────────────────┬──────────────────┐R 24h┌─╮
@@ -16,9 +16,9 @@
 >
 > - **Graph and totals:** Claude Code tokens (input + output + cache writes) from the transcripts in `~/.claude/projects`. No network or credentials involved.
 > - **Keys:** `shift + u` shows or hides the box, `shift + r` cycles the range. `claude_position` under Options → proc moves it above or below the processes.
-> - **Install:** see the [latest release](https://github.com/GPTmadeit/btop/releases/latest). Installs as `btop-claude` next to regular btop and shares its config.
-> - **Update:** `btop-claude --self-update`
-> - **Plan limit meters (optional):** set `btop-claude --claude-statusline` as your Claude Code status line. Details are in the release notes.
+> - **Install:** see the [latest release](https://github.com/GPTmadeit/btop/releases/latest). Installs as `cbtop` next to regular btop and shares its config.
+> - **Update:** `cbtop --self-update`
+> - **Plan limit meters (optional):** set `cbtop --claude-statusline` as your Claude Code status line. Details are in the release notes.
 
 <a href="https://repology.org/project/btop/versions">
     <img src="https://repology.org/badge/vertical-allrepos/btop.svg" alt="Packaging status" align="right">

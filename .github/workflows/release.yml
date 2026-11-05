@@ -23,7 +23,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
-        run: gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --verify-tag --title "btop-claude $TAG" --notes-file .github/RELEASE_NOTES.md
+        run: gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --verify-tag --title "cbtop $TAG" --notes-file .github/RELEASE_NOTES.md
 
   build:
     name: Build (${{ matrix.arch }})
@@ -66,7 +66,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
-          ASSET: btop-claude-${{ matrix.arch }}-linux
+          ASSET: cbtop-${{ matrix.arch }}-linux
         run: |
           strip build/btop
           cp build/btop "$ASSET"
@@ -84,7 +84,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'btop-claude-*'
-          sha256sum btop-claude-* > SHA256SUMS
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'cbtop-*'
+          sha256sum cbtop-* > SHA256SUMS
           gh release upload "$TAG" SHA256SUMS --repo "$GITHUB_REPOSITORY" --clobber
           gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest

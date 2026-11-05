@@ -95,7 +95,7 @@ namespace Global {
 		{"#801414", "██████╔╝   ██║   ╚██████╔╝██║        ╚═╝    ╚═╝"},
 		{"#000000", "╚═════╝    ╚═╝    ╚═════╝ ╚═╝"},
 	};
-	const string Version = "1.4.8-claude.1";
+	const string Version = "1.4.8-claude.2";
 
 	int coreCount;
 	string overlay;

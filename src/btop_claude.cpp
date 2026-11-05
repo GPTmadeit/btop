@@ -636,7 +636,7 @@ namespace Claude {
 		}
 		utsname info{};
 		if (uname(&info) != 0) return 1;
-		const string asset = fmt::format("btop-claude-{}-linux", info.machine);
+		const string asset = fmt::format("cbtop-{}-linux", info.machine);
 
 		const auto tag = latest_tag();
 		if (not tag) {
